@@ -1,0 +1,24 @@
+{
+  "name": "discord-reaction-separator-bot",
+  "version": "1.0.0",
+  "description": "بوت احترافي للديسكورد لوضع الرياكشنات التلقائية وإرسال الفواصل (خطوط/صور/GIF)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "separator",
+    "auto-reaction"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
