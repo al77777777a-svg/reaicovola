@@ -76,14 +76,18 @@ if (!token || token === 'توكنك') {
 }
 
 const config = {
-    // رومات التقييمات والإثباتات
-    reviewChannel: (process.env.REVIEW_CHANNEL_ID || '').trim(),
+    // 1. روم التقييمات (يضع رياكشن + يرسل الفاصل) - الافتراضي: 1447978433178239211
+    reviewChannel: (process.env.REVIEW_CHANNEL_ID || '1447978433178239211').trim(),
     reviewEmojis: parseEmojiList(process.env.REVIEW_EMOJIS || '⭐'),
     
-    proofsChannel: (process.env.PROOFS_CHANNEL_ID || '').trim(),
+    // 2. روم الإثباتات (يضع رياكشن فقط بدون فاصل) - الافتراضي: 1551213877717639181
+    proofsChannel: (process.env.PROOFS_CHANNEL_ID || '1551213877717639181').trim(),
     proofsEmojis: parseEmojiList(process.env.PROOFS_EMOJIS || '✅'),
 
-    // رومات إضافية
+    // روم الفاصل الحصري (يرسل الفاصل في هذا الروم فقط)
+    separatorChannel: (process.env.SEPARATOR_CHANNEL_ID || process.env.REVIEW_CHANNEL_ID || '1447978433178239211').trim(),
+
+    // رومات إضافية (رياكشن فقط)
     extraChannels: (process.env.EXTRA_CHANNELS || '')
         .split(',')
         .map(c => c.trim())
@@ -208,8 +212,9 @@ client.once('ready', async () => {
     console.log(`🆔 معرف البوت: ${client.user.id}`);
     console.log(`📁 الفاصل المستخدم: ${config.separatorUrl ? 'رابط مباشر: ' + config.separatorUrl : config.separatorFile}`);
     console.log(`⏱️ معدل الفاصل: كل ${config.separatorInterval} رسالة`);
-    console.log(`📢 روم التقييمات: ${config.reviewChannel || 'غير محدد'} | الإيموجي: ${config.reviewEmojis.join(' ')}`);
-    console.log(`📢 روم الإثباتات: ${config.proofsChannel || 'غير محدد'} | الإيموجي: ${config.proofsEmojis.join(' ')}`);
+    console.log(`📢 روم التقييمات (رياكشن + فاصل): ${config.reviewChannel} | الإيموجي: ${config.reviewEmojis.join(' ')}`);
+    console.log(`📢 روم الإثباتات (رياكشن فقط): ${config.proofsChannel} | الإيموجي: ${config.proofsEmojis.join(' ')}`);
+    console.log(`➖ روم الفاصل الحصري: ${config.separatorChannel}`);
     if (config.extraChannels.length > 0) {
         console.log(`📢 رومات إضافية (${config.extraChannels.length}): ${config.extraChannels.join(', ')} | الإيموجي: ${config.extraEmojis.join(' ')}`);
     }
@@ -293,21 +298,25 @@ client.on('messageCreate', async message => {
     const channelId = message.channelId;
     let emojisToReact = [];
     let isTargetChannel = false;
+    let allowSeparator = false;
 
-    // 1. فحص إذا كانت القناة هي روم التقييمات
-    if (config.reviewChannel && channelId === config.reviewChannel) {
+    // 1. فحص إذا كانت القناة هي روم التقييمات (1447978433178239211) -> يضع رياكشن + يرسل الفاصل
+    if (channelId === config.reviewChannel || channelId === '1447978433178239211') {
         isTargetChannel = true;
         emojisToReact = config.reviewEmojis;
+        allowSeparator = true; // ✅ الفاصل مسموح به هنا فقط
     }
-    // 2. فحص إذا كانت القناة هي روم الإثباتات
-    else if (config.proofsChannel && channelId === config.proofsChannel) {
+    // 2. فحص إذا كانت القناة هي روم الإثباتات (1551213877717639181) -> يضع رياكشن فقط بدون فاصل
+    else if (channelId === config.proofsChannel || channelId === '1551213877717639181') {
         isTargetChannel = true;
         emojisToReact = config.proofsEmojis;
+        allowSeparator = false; // ❌ ممنوع الفاصل نهائياً في هذا الروم
     }
-    // 3. فحص إذا كانت القناة ضمن الرومات الإضافية
+    // 3. فحص إذا كانت القناة ضمن الرومات الإضافية -> رياكشن فقط بدون فاصل
     else if (config.extraChannels.includes(channelId)) {
         isTargetChannel = true;
         emojisToReact = config.extraEmojis;
+        allowSeparator = false;
     }
 
     if (!isTargetChannel) return;
@@ -334,8 +343,8 @@ client.on('messageCreate', async message => {
             }
         }
 
-        // --- 2. إرسال الفاصل إذا كان مفعّلاً ---
-        if (config.enableSeparator) {
+        // --- 2. إرسال الفاصل إذا كان مفعّلاً ومسموحاً في هذا الروم فقط (1447978433178239211) ---
+        if (config.enableSeparator && allowSeparator && channelId !== '1551213877717639181') {
             let currentCount = (channelCounters.get(channelId) || 0) + 1;
 
             if (currentCount >= config.separatorInterval) {
